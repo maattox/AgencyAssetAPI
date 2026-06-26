@@ -1,3 +1,9 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".github/workflows/dotnet.yml" />
+    <File Path=".gitignore" />
+    <File Path="infrastructure/main.bicep" />
+    <File Path="README.md" />
+  </Folder>
   <Project Path="AgencyAssetAPI/AgencyAssetAPI.csproj" />
 </Solution>
