@@ -1,6 +1,37 @@
 @AgencyAssetAPI_HostAddress = http://localhost:5262
+@ApiKey = your-local-dev-api-key
 
-GET {{AgencyAssetAPI_HostAddress}}/weatherforecast/
+### Health (no API key)
+GET {{AgencyAssetAPI_HostAddress}}/health
 Accept: application/json
 
-###
+### Demo — all assets (no API key)
+GET {{AgencyAssetAPI_HostAddress}}/api/demo?maxDays=90
+Accept: application/json
+
+### Demo — non-audited assets (no API key)
+GET {{AgencyAssetAPI_HostAddress}}/api/demo/non-audited?maxDays=90
+Accept: application/json
+
+### Demo — mark asset audited (no API key)
+PUT {{AgencyAssetAPI_HostAddress}}/api/demo/1/audit
+Accept: application/json
+
+### Demo — reset seed data (no API key)
+POST {{AgencyAssetAPI_HostAddress}}/api/demo/reset
+Accept: application/json
+
+### Secured — all assets
+GET {{AgencyAssetAPI_HostAddress}}/api/assets
+Accept: application/json
+X-Api-Key: {{ApiKey}}
+
+### Secured — non-audited assets
+GET {{AgencyAssetAPI_HostAddress}}/api/assets/non-audited?maxDays=90
+Accept: application/json
+X-Api-Key: {{ApiKey}}
+
+### Secured — update audit date
+PUT {{AgencyAssetAPI_HostAddress}}/api/assets/1/audit
+Accept: application/json
+X-Api-Key: {{ApiKey}}

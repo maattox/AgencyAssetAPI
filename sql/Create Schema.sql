@@ -10,7 +10,7 @@ CREATE TABLE dbo.Assets (
 	[SerialNumber] VARCHAR(50) UNIQUE NOT NULL,
 	[AssetName] VARCHAR(100) NULL,
 	[AssignedDepartment] VARCHAR(50) NULL,
-	[LastAuditDate] DATETIME NULL,
+	[LastAuditDate] DATETIME NULL
 );
 GO
 
