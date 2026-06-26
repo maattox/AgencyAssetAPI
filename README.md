@@ -62,7 +62,7 @@ All endpoints require the `X-Api-Key` header.
 
 ## Database
 
-The database contains one main table: `dbo.Assets`.
+The database contains one main table: `dbo.Assets`. 
 
 **Key columns**:
 - `AssetId` (IDENTITY)
