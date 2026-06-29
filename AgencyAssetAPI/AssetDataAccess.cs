@@ -1,4 +1,6 @@
 using System.Data;
+using Azure.Core;
+using Azure.Identity;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Data.SqlClient;
@@ -7,12 +9,24 @@ namespace AgencyAssetAPI;
 
 internal static class AssetDataAccess
 {
-    /// Open a SqlConnection natively. 
-    /// For Managed Identity / Developer accounts, ensure your connection string includes:
-    /// Authentication="Active Directory Default";
+    private static readonly Lazy<DefaultAzureCredential> _azureCredential =
+        new(() => new DefaultAzureCredential());
+
+    /// Open a SqlConnection, injecting a Managed Identity token manually
+    /// when the connection string uses pure passwordless settings.
     private static async Task<SqlConnection> OpenConnectionAsync(string connectionString, CancellationToken cancellationToken)
     {
         var connection = new SqlConnection(connectionString);
+        var builder = new SqlConnectionStringBuilder(connectionString);
+
+        // If no SQL User or Password is provided, use Azure Managed Identity token injection
+        if (string.IsNullOrEmpty(builder.UserID) && string.IsNullOrEmpty(builder.Password))
+        {
+            var tokenRequestContext = new TokenRequestContext(["https://database.windows.net/.default"]);
+            var accessToken = await _azureCredential.Value.GetTokenAsync(tokenRequestContext, cancellationToken);
+            connection.AccessToken = accessToken.Token;
+        }
+
         await connection.OpenAsync(cancellationToken);
         return connection;
     }
