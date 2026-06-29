@@ -1,9 +1,22 @@
+using System.Data;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Data.SqlClient;
 
 namespace AgencyAssetAPI;
 
 internal static class AssetDataAccess
 {
+    /// Open a SqlConnection natively. 
+    /// For Managed Identity / Developer accounts, ensure your connection string includes:
+    /// Authentication="Active Directory Default";
+    private static async Task<SqlConnection> OpenConnectionAsync(string connectionString, CancellationToken cancellationToken)
+    {
+        var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        return connection;
+    }
+
     internal static bool CheckCompliance(DateTime? lastAuditDate, int maxDays)
     {
         if (!lastAuditDate.HasValue)
@@ -17,8 +30,7 @@ internal static class AssetDataAccess
     {
         var assets = new List<Asset>();
 
-        await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(connectionString, cancellationToken);
 
         await using var command = new SqlCommand("SELECT AssetId, SerialNumber, AssetName, AssignedDepartment, LastAuditDate FROM Assets", connection);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -35,15 +47,14 @@ internal static class AssetDataAccess
     {
         var assets = new List<Asset>();
 
-        await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(connectionString, cancellationToken);
 
         await using var command = new SqlCommand("GetNonAuditedAssets", connection)
         {
-            CommandType = System.Data.CommandType.StoredProcedure
+            CommandType = CommandType.StoredProcedure
         };
 
-        command.Parameters.AddWithValue("@MaxDaysSinceLastAudit", maxDays);
+        command.Parameters.Add("@MaxDaysSinceLastAudit", SqlDbType.Int).Value = maxDays;
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
         while (await reader.ReadAsync(cancellationToken))
@@ -59,11 +70,10 @@ internal static class AssetDataAccess
         if (auditDate.HasValue && auditDate.Value > DateTime.UtcNow)
             return AuditUpdateResult.BadRequest("Audit date cannot be in the future.");
 
-        await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(connectionString, cancellationToken);
 
         await using var selectCommand = new SqlCommand("SELECT LastAuditDate FROM Assets WHERE AssetId = @Id", connection);
-        selectCommand.Parameters.AddWithValue("@Id", id);
+        selectCommand.Parameters.Add("@Id", SqlDbType.Int).Value = id;
 
         var result = await selectCommand.ExecuteScalarAsync(cancellationToken);
 
@@ -83,8 +93,8 @@ internal static class AssetDataAccess
         var auditDateToSet = auditDate ?? DateTime.UtcNow;
 
         await using var command = new SqlCommand("UPDATE Assets SET LastAuditDate = @AuditDate WHERE AssetId = @Id", connection);
-        command.Parameters.AddWithValue("@AuditDate", auditDateToSet);
-        command.Parameters.AddWithValue("@Id", id);
+        command.Parameters.Add("@AuditDate", SqlDbType.DateTime).Value = auditDateToSet;
+        command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
 
         await command.ExecuteNonQueryAsync(cancellationToken);
 
@@ -93,12 +103,11 @@ internal static class AssetDataAccess
 
     internal static async Task ResetAssetsTableAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(connectionString, cancellationToken);
 
         await using var command = new SqlCommand("ResetAssetsTable", connection)
         {
-            CommandType = System.Data.CommandType.StoredProcedure
+            CommandType = CommandType.StoredProcedure
         };
 
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -106,8 +115,7 @@ internal static class AssetDataAccess
 
     internal static async Task<bool> CanConnectAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(connectionString, cancellationToken);
         return true;
     }
 
