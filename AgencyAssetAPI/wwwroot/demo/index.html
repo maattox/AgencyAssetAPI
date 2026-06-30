@@ -53,6 +53,43 @@
     .banner.success { border-color: var(--success); }
     .banner.hidden { display: none; }
 
+    .tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+    }
+
+    .tab-btn.active {
+        color: var(--text);
+        border-bottom-color: var(--accent);
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .history-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .history-item .muted {
+        color: var(--muted);
+        font-size: 0.8rem;
+    }
+
     .toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -195,35 +232,51 @@
   </header>
 
   <main>
-    <div id="statusBanner" class="banner warning">
-      <span class="spinner"></span>
-      Connecting to the API. The Azure SQL database may take 30–60 seconds to wake up on first request.
-    </div>
-
-    <div class="toolbar">
-      <div class="filter-group">
-        <button type="button" id="btnAll" class="active">All assets</button>
-        <button type="button" id="btnNonAudited">Non-audited only</button>
+      <div id="statusBanner" class="banner warning">
+          <span class="spinner"></span>
+          Connecting to the API. The Azure SQL database may take 30–60 seconds to wake up on first request.
       </div>
-      <button type="button" id="btnRefresh" class="btn btn-secondary">Refresh</button>
-      <button type="button" id="btnReset" class="btn btn-secondary">Reset demo data</button>
-      <div class="stats">
-        <span id="statTotal">— assets</span>
-        <span id="statNonCompliant">— non-compliant</span>
+
+      <div class="tabs">
+          <button type="button" class="tab-btn active" id="tabAssets">Assets</button>
+          <button type="button" class="tab-btn" id="tabHistory">Audit History</button>
       </div>
-    </div>
 
-    <div id="tableContainer">
-      <div class="loading"><span class="spinner"></span>Loading assets…</div>
-    </div>
+      <div id="assetsView">
+          <div class="toolbar">
+              <div class="filter-group">
+                  <button type="button" id="btnAll" class="active">All assets</button>
+                  <button type="button" id="btnNonAudited">Non-audited only</button>
+              </div>
+              <button type="button" id="btnRefresh" class="btn btn-secondary">Refresh</button>
+              <button type="button" id="btnReset" class="btn btn-secondary">Reset demo data</button>
+              <div class="stats">
+                  <span id="statTotal">— assets</span>
+                  <span id="statNonCompliant">— non-compliant</span>
+              </div>
+          </div>
 
-    <footer>
-      <p>
-        Secured API endpoints require an <code>X-Api-Key</code> header.
-        This demo uses read/write routes at <code>/api/demo/*</code> for portfolio visitors.
-        <a href="https://github.com/maattox/AgencyAssetAPI" target="_blank" rel="noopener">View source on GitHub</a>
-      </p>
-    </footer>
+          <div id="tableContainer">
+              <div class="loading"><span class="spinner"></span>Loading assets…</div>
+          </div>
+      </div>
+
+      <div id="historyView" class="hidden">
+          <div class="toolbar">
+              <button type="button" id="btnRefreshHistory" class="btn btn-secondary">Refresh</button>
+          </div>
+          <div id="historyContainer">
+              <div class="loading"><span class="spinner"></span>Loading audit history…</div>
+          </div>
+      </div>
+
+      <footer>
+          <p>
+              Secured API endpoints require an <code>X-Api-Key</code> header.
+              This demo uses read/write routes at <code>/api/demo/*</code> for portfolio visitors.
+              <a href="https://github.com/maattox/AgencyAssetAPI" target="_blank" rel="noopener">View source on GitHub</a>
+          </p>
+      </footer>
   </main>
 
   <script>
@@ -315,6 +368,68 @@
       const nonCompliant = assets.filter(a => !a.isCompliant).length;
       statNonCompliant.textContent = nonCompliant + ' non-compliant';
     }
+
+    function formatBytes(bytes) {
+      if (bytes == null) return '—';
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    async function loadHistory() {
+      const historyContainer = document.getElementById('historyContainer');
+      historyContainer.innerHTML = '<div class="loading"><span class="spinner"></span>Loading audit history…</div>';
+
+      try {
+        const res = await fetch('/api/automation/history');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const files = await res.json();
+
+        if (files.length === 0) {
+          historyContainer.innerHTML = '<div class="empty">No past audits found yet. Run the PowerShell automation script to generate an audit report.</div>';
+          return;
+        }
+
+        historyContainer.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Created</th>
+                <th>Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${files.map(f => `
+                <tr>
+                  <td><code>${escapeHtml(f.fileName)}</code></td>
+                  <td>${formatDate(f.createdOn)}</td>
+                  <td>${formatBytes(f.sizeInBytes)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>`;
+      } catch (err) {
+        historyContainer.innerHTML = '<div class="empty">Unable to load audit history: ' + err.message + '</div>';
+      }
+    }
+
+    document.getElementById('tabAssets').addEventListener('click', () => {
+      document.getElementById('tabAssets').classList.add('active');
+      document.getElementById('tabHistory').classList.remove('active');
+      document.getElementById('assetsView').classList.remove('hidden');
+      document.getElementById('historyView').classList.add('hidden');
+    });
+
+    document.getElementById('tabHistory').addEventListener('click', () => {
+      document.getElementById('tabHistory').classList.add('active');
+      document.getElementById('tabAssets').classList.remove('active');
+      document.getElementById('historyView').classList.remove('hidden');
+      document.getElementById('assetsView').classList.add('hidden');
+      loadHistory();
+    });
+
+    document.getElementById('btnRefreshHistory').addEventListener('click', loadHistory);
 
     async function waitForHealth(maxAttempts = 30, intervalMs = 2000) {
       for (let i = 0; i < maxAttempts; i++) {

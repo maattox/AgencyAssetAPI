@@ -2,8 +2,17 @@
   <Folder Name="/Solution Items/">
     <File Path=".github/workflows/dotnet.yml" />
     <File Path=".gitignore" />
+    <File Path="automation/Run-AgencyAudit.ps1" />
+    <File Path="infrastructure/deploy.ps1" />
     <File Path="infrastructure/main.bicep" />
+    <File Path="infrastructure/parameters.json" />
+    <File Path="infrastructure/setup.sql" />
     <File Path="README.md" />
+    <File Path="sql/Create GetNonAuditedAssets Procedure.sql" />
+    <File Path="sql/Create ResetAssetsTable Procedure.sql" />
+    <File Path="sql/Create Schema.sql" />
+    <File Path="sql/setup-managed-identity.sql" />
+    <File Path="sql/Test GetNonAuditedAssets Procedure.sql" />
   </Folder>
   <Project Path="AgencyAssetAPI/AgencyAssetAPI.csproj" />
 </Solution>

@@ -2,7 +2,7 @@
 
 A demonstration project showcasing a full-stack solution using **Azure SQL Database** and a minimal **.NET 8 Web API**. Built to highlight proficiency with Microsoft Azure cloud services, infrastructure as code, and secure backend development.
 
-![.NET](https://img.shields.io/badge/.NET-8.0-blue)
+![.NET](https://img.shields.io/badge/.NET-10.0-blue)
 ![Azure SQL](https://img.shields.io/badge/Azure%20SQL-Database-blue)
 ![Bicep](https://img.shields.io/badge/Infrastructure-Bicep-blue)
 
@@ -32,65 +32,37 @@ The goal of this project is to demonstrate Azure cloud development skills.
 - **Backend**: .NET 10 Minimal API
 - **Database**: Azure SQL Database (Serverless)
 - **IaC**: Bicep
-- **Authentication**: Custom API Key middleware
+- **Authentication**: Custom API Key middleware + Passwordless token injection for database access
 - **Deployment**: Azure App Service (Free tier F1)
 
 ## Architecture
 Azure Resource Group
-├── Azure SQL Server + Database (AgencyAssetDB)
+├── Azure Key Vault (API secrets management)
+├── Azure SQL Server + Database (Serverless General Purpose Tier)
 ├── App Service Plan (F1 Free)
-└── Web App (.NET 10 API)
+└── Web App (.NET 10 Minimal REST API)
 
+## Azure Resources Tier Note
+This project is designed to run on the **Free Tier** of Azure App Service and the **Serverless Tier** of Azure SQL Database. 
+Every resource used has a free tier besides the Azure Key Vault which technically isn't free but the cost is negligible (~$0.03/10,000 operations).
 
 ## Live Demo
 
 > **Note**: The database uses the serverless tier and may take 30–60 seconds to wake up on first request.
 
--- TODO: Create a better way to test and demonstrate the API for people to quickly and easily see it in action. For now, you can use the Swagger UI to test the endpoints.
-
-**[View Live API →](https://agency-asset-api.azurewebsites.net/swagger)** *(replace with your actual URL)*
-
-## API Endpoints
-
-| Method | Endpoint                              | Description                              |
-|--------|---------------------------------------|------------------------------------------|
-| GET    | `/api/assets`                         | Get all assets with compliance status    |
-| GET    | `/api/assets/non-audited`             | Get only non-compliant assets            |
-| PUT    | `/api/assets/{id}/audit`              | Update an asset's last audit date        |
-
-All endpoints require the `X-Api-Key` header.
-
-## Database
-
-The database contains one main table: `dbo.Assets`. 
-
-**Key columns**:
-- `AssetId` (IDENTITY)
-- `SerialNumber` (Unique)
-- `AssetName`
-- `AssignedDepartment`
-- `LastAuditDate`
-
-A stored procedure `ResetAssetsTable` is included for easy testing/demo resets.
+**[View Live API Demo →](https://agencyasset-api-frhba2hmagfbhteg.westus3-01.azurewebsites.net/demo/index.html)**
 
 ## Deploy Your Own Instance
 
+The deployment setup provisions your resources, wires up Managed Identity databases roles, creates tables, and seeds initial data.
+
 ### Prerequisites
+1. An active Azure subscription.
+2. [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) installed and logged in (`az login`).
 
-- Azure subscription
-- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
-- [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) (usually installed with Azure CLI)
-
-### Deployment Steps
-
-```bash
-# 1. Create resource group
-az group create --name agency-asset-rg --location westus3
-
-# 2. Deploy infrastructure
-az deployment group create \
-  --resource-group agency-asset-rg \
-  --template-file infrastructure/main.bicep \
-  --parameters sqlAdminLogin='youradmin' \
-               sqlAdminPassword='StrongP@ssw0rd123!' \
-               apiKey='your-super-secret-api-key'
+### Steps
+1. Clone this repository.
+2. Review and configure local settings inside `/infrastructure/parameters.json`.
+3. Open a PowerShell terminal inside the `/infrastructure/` folder and run the automated provisioning file:
+   ```powershell
+   ./deploy.ps1
