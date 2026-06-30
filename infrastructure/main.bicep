@@ -176,6 +176,10 @@ resource appService 'Microsoft.Web/sites@2024-11-01' = {
           name: 'SpecialValues__MaxDaysSinceLastAudit' 
           value: '90' 
         }
+        {
+          name: 'SpecialValues__StorageAccountName'
+          value: storageAccountName
+        }
       ]
       connectionStrings: [
         {
