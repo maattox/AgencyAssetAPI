@@ -119,15 +119,50 @@ $appUrl = $deployment.properties.outputs.appServiceUrl.value
 $kvName = $params.parameters.keyVaultName.value
 $storageAccount = $params.parameters.storageAccountName.value
 
-# Temporarily set for current PowerShell session
-$env:AGENCY_API_URL = $appUrl
-$env:AGENCY_KV_NAME = $kvName
-$env:AGENCY_STORAGE_ACCOUNT = $storageAccount
+# Temporarily set for current PowerShell session and persist to user environment
+$vars = @{ 
+    "AGENCY_API_URL" = $appUrl
+    "AGENCY_KV_NAME" = $kvName
+    "AGENCY_STORAGE_ACCOUNT" = $storageAccount
+}
 
-# Persistently set in Windows User environment (survives reboot and new shell sessions)
-# These enable Run-AgencyAudit.ps1 to find the API, Key Vault, and Storage Account
-[Environment]::SetEnvironmentVariable("AGENCY_API_URL", $appUrl, "User")
-[Environment]::SetEnvironmentVariable("AGENCY_KV_NAME", $kvName, "User")
-[Environment]::SetEnvironmentVariable("AGENCY_STORAGE_ACCOUNT", $storageAccount, "User")
+# Check for existing values (session or user) and prompt before overwriting
+$existing = @()
+foreach ($name in $vars.Keys) {
+    $sessionVal = (Get-Item -Path env:$name -ErrorAction SilentlyContinue).Value
+    $userVal = [Environment]::GetEnvironmentVariable($name, "User")
+    if (-not [string]::IsNullOrEmpty($sessionVal) -or -not [string]::IsNullOrEmpty($userVal)) {
+        $existing += [PSCustomObject]@{ Name = $name; Session = $sessionVal; User = $userVal }
+    }
+}
 
-Write-Host "Environment variables for API, Key Vault, and Storage successfully configured" -ForegroundColor Green
+$setVars = $true
+if ($existing.Count -gt 0) {
+    Write-Host "The following environment variables already exist and will be overwritten if you proceed:" -ForegroundColor Yellow
+    foreach ($e in $existing) {
+        $s = if (-not [string]::IsNullOrEmpty($e.Session)) { $e.Session } else { "<not set>" }
+        $u = if (-not [string]::IsNullOrEmpty($e.User)) { $e.User } else { "<not set>" }
+        Write-Host (" - {0}: session='{1}', user='{2}'" -f $e.Name, $s, $u)
+    }
+    Write-Host ""
+    Write-Host "If you choose not to overwrite them, parts of the project may not work without properly set environment variables." -ForegroundColor Yellow
+    $confirm = Read-Host "Do you want to overwrite these values? (yes/no)"
+    if ($confirm -notmatch '^(?i:y(es)?)$') {
+        Write-Host "Skipping environment variable updates. Note: parts of the project might not work without correct values." -ForegroundColor Yellow
+        $setVars = $false
+    }
+}
+
+if ($setVars) {
+    # Temporarily set for current PowerShell session
+    foreach ($name in $vars.Keys) {
+        $env:$name = $vars[$name]
+    }
+
+    # Persistently set in Windows User environment (survives reboot and new shell sessions)
+    foreach ($name in $vars.Keys) {
+        [Environment]::SetEnvironmentVariable($name, $vars[$name], "User")
+    }
+
+    Write-Host "Environment variables for API, Key Vault, and Storage successfully configured" -ForegroundColor Green
+}

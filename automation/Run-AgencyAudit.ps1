@@ -23,12 +23,130 @@
 # ========================================
 # Parameters and Configuration
 # ========================================
-# Environment variables take precedence over defaults (12-factor app pattern)
+# Parameters: explicit param > environment variable > infrastructure/parameters.json > last-resort literal
 param(
-    [string]$BaseUrl = $(if ($env:AGENCY_API_URL) { $env:AGENCY_API_URL } else { "https://agencyasset-api-frhba2hmagfbhteg.westus3-01.azurewebsites.net" }),
-    [string]$StorageAccountName = $(if ($env:AGENCY_STORAGE_ACCOUNT) { $env:AGENCY_STORAGE_ACCOUNT } else { "agencyassetstore" }),
-    [string]$KeyVaultName = $(if ($env:AGENCY_KV_NAME) { $env:AGENCY_KV_NAME } else { "agency-asset-kv" })
+    [string]$BaseUrl,
+    [string]$StorageAccountName,
+    [string]$KeyVaultName
 )
+
+# Resolve defaults from environment, then parameters.json, then repository defaults
+$repoParamsPath = Join-Path $PSScriptRoot "..\infrastructure\parameters.json"
+$repoDefaults = @{
+    webAppName = 'my-agency-asset-api'
+    storageAccountName = 'myagencyassetstore'
+    keyVaultName = 'my-agency-asset-kv'
+}
+
+if (Test-Path $repoParamsPath) {
+    try {
+        $paramsJson = Get-Content $repoParamsPath -Raw | ConvertFrom-Json
+        if ($paramsJson.parameters.webAppName.value) { $repoDefaults.webAppName = $paramsJson.parameters.webAppName.value }
+        if ($paramsJson.parameters.storageAccountName.value) { $repoDefaults.storageAccountName = $paramsJson.parameters.storageAccountName.value }
+        if ($paramsJson.parameters.keyVaultName.value) { $repoDefaults.keyVaultName = $paramsJson.parameters.keyVaultName.value }
+    } catch {
+        Write-Warning "Could not parse infrastructure/parameters.json; using embedded defaults. Error: $_"
+    }
+} else {
+    Write-Verbose "infrastructure/parameters.json not found at $repoParamsPath — using embedded defaults."
+}
+
+# Effective values (priority: explicit param > env var > parameters.json/default)
+if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
+    if ($env:AGENCY_API_URL) {
+        $BaseUrl = $env:AGENCY_API_URL
+        Write-Host "Using AGENCY_API_URL environment variable for BaseUrl." -ForegroundColor Cyan
+    } else {
+        # Check whether user appears to be logged in to Azure (Az PowerShell or az CLI)
+        $loggedIn = $false
+        if (Get-Command Get-AzContext -ErrorAction SilentlyContinue) {
+            try {
+                $ctx = Get-AzContext -ErrorAction Stop
+                if ($ctx -and $ctx.Account) { $loggedIn = $true }
+            } catch {
+                # ignore
+            }
+        }
+
+        if (-not $loggedIn -and (Get-Command az -ErrorAction SilentlyContinue)) {
+            try {
+                $acctId = az account show --query id -o tsv 2>$null
+                if ($acctId) { $loggedIn = $true }
+            } catch {
+                # ignore
+            }
+        }
+
+        if (-not $loggedIn) {
+            Write-Warning "You do not appear to be logged into Azure (Connect-AzAccount or 'az login'). App discovery may fail. Either log in or set AGENCY_API_URL environment variable to the API base URL."
+        }
+
+        # Try to discover the app's default host name via Az PowerShell first (Get-AzWebApp)
+        $discoveredHost = $null
+
+        if (Get-Command Get-AzWebApp -ErrorAction SilentlyContinue) {
+            try {
+                $webapp = Get-AzWebApp -Name $repoDefaults.webAppName -ErrorAction Stop
+                if ($webapp.DefaultHostName) { $discoveredHost = $webapp.DefaultHostName }
+            } catch {
+                Write-Verbose "Get-AzWebApp failed to locate web app '$($repoDefaults.webAppName)': $_"
+            }
+        }
+
+        # Fallback: try Azure CLI if available
+        if (-not $discoveredHost -and (Get-Command az -ErrorAction SilentlyContinue)) {
+            try {
+                $azHost = az webapp show --name $repoDefaults.webAppName --query defaultHostName -o tsv 2>$null
+                if ($azHost) { $discoveredHost = $azHost.Trim() }
+            } catch {
+                Write-Verbose "az webapp show failed to locate web app '$($repoDefaults.webAppName)': $_"
+            }
+        }
+
+        if ($discoveredHost) {
+            $BaseUrl = "https://$discoveredHost"
+            Write-Host "Discovered App Service host for '$($repoDefaults.webAppName)': $BaseUrl" -ForegroundColor Cyan
+
+            # Cache discovered BaseUrl in environment for subsequent runs (current session + persist to User scope)
+            try {
+                $env:AGENCY_API_URL = $BaseUrl
+                [Environment]::SetEnvironmentVariable('AGENCY_API_URL', $BaseUrl, 'User')
+                Write-Host "Cached AGENCY_API_URL in current session and user environment." -ForegroundColor Cyan
+            } catch {
+                Write-Verbose "Failed to persist AGENCY_API_URL to user environment: $_"
+            }
+        } else {
+            Write-Error "Could not discover App Service host for '$($repoDefaults.webAppName)'. Please ensure you are logged in (Connect-AzAccount or 'az login') and that the web app name is correct, or set the AGENCY_API_URL environment variable to the base URL of your API."
+            exit 1
+        }
+    }
+} else {
+    Write-Host "Using explicit parameter for BaseUrl: $BaseUrl" -ForegroundColor Cyan
+}
+
+if ([string]::IsNullOrWhiteSpace($StorageAccountName)) {
+    if ($env:AGENCY_STORAGE_ACCOUNT) {
+        $StorageAccountName = $env:AGENCY_STORAGE_ACCOUNT
+        Write-Host "Using AGENCY_STORAGE_ACCOUNT environment variable for StorageAccountName." -ForegroundColor Cyan
+    } else {
+        $StorageAccountName = $repoDefaults.storageAccountName
+        Write-Host "No StorageAccountName provided; using fallback from parameters.json: $StorageAccountName" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Using explicit parameter for StorageAccountName: $StorageAccountName" -ForegroundColor Cyan
+}
+
+if ([string]::IsNullOrWhiteSpace($KeyVaultName)) {
+    if ($env:AGENCY_KV_NAME) {
+        $KeyVaultName = $env:AGENCY_KV_NAME
+        Write-Host "Using AGENCY_KV_NAME environment variable for KeyVaultName." -ForegroundColor Cyan
+    } else {
+        $KeyVaultName = $repoDefaults.keyVaultName
+        Write-Host "No KeyVaultName provided; using fallback from parameters.json: $KeyVaultName" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Using explicit parameter for KeyVaultName: $KeyVaultName" -ForegroundColor Cyan
+}
 
 # ========================================
 # Section 1: Authenticate with Azure Key Vault
@@ -47,7 +165,7 @@ try {
     $ApiKey = az keyvault secret show --vault-name $KeyVaultName --name "ApiKey" --query "value" -o tsv
     if ([string]::IsNullOrWhiteSpace($ApiKey)) { throw "Retrieved API Key is empty." }
 } catch {
-    Write-Error "Failed to retrieve API Key from KeyVault. Ensure you have run 'az login' and have Key Vault Secrets User access."
+    Write-Error "Failed to retrieve API Key from KeyVault ($KeyVaultName). Ensure you have run 'az login', have Key Vault Secrets User access, and that the Key Vault name matches your deployment (or set AGENCY_KV_NAME environment variable). If you just deployed via infrastructure/deploy.ps1, verify the deployment succeeded and that the Key Vault contains the 'ApiKey' secret. Error: $_"
     exit 1
 }
 

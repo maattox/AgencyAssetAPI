@@ -133,6 +133,18 @@ app.MapGet("/api/automation/history", async (CancellationToken cancellationToken
 })
 .WithName("GetAuditHistory");
 
+// Serves the raw contents of a single audit CSV — used for the demo page's
+// expandable preview and for the per-row Download button.
+app.MapGet("/api/automation/history/{fileName}", async (string fileName, CancellationToken cancellationToken) =>
+{
+    var content = await AssetDataAccess.GetAuditFileContentAsync(storageAccountName, fileName, cancellationToken);
+    if (content is null)
+        return Results.NotFound(new { error = $"File '{fileName}' not found." });
+
+    return Results.Text(content, "text/csv", System.Text.Encoding.UTF8);
+})
+.WithName("GetAuditFileContent");
+
 // Map asset management routes (protected and demo variants)
 MapAssetRoutes("/api/assets", requireApiKey: true);
 MapAssetRoutes("/api/demo", requireApiKey: false);

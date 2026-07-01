@@ -1,520 +1,757 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agency Asset API — Live Demo</title>
-  <style>
-    :root {
-      --bg: #0f1419;
-      --surface: #1a2332;
-      --border: #2d3a4f;
-      --text: #e7ecf3;
-      --muted: #8b9cb3;
-      --accent: #0078d4;
-      --accent-hover: #106ebe;
-      --success: #107c10;
-      --danger: #d13438;
-      --warning: #ffb900;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.5;
-      min-height: 100vh;
-    }
-
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 1.25rem 1.5rem;
-    }
-
-    header h1 { font-size: 1.35rem; font-weight: 600; }
-    header p { color: var(--muted); font-size: 0.9rem; margin-top: 0.35rem; }
-
-    main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
-
-    .banner {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem 1.25rem;
-      margin-bottom: 1.25rem;
-      font-size: 0.9rem;
-    }
-
-    .banner.warning { border-color: var(--warning); }
-    .banner.error { border-color: var(--danger); }
-    .banner.success { border-color: var(--success); }
-    .banner.hidden { display: none; }
-
-    .tabs {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1.25rem;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .tab-btn {
-        background: transparent;
-        border: none;
-        color: var(--muted);
-        padding: 0.6rem 1rem;
-        font-size: 0.9rem;
-        cursor: pointer;
-        border-bottom: 2px solid transparent;
-    }
-
-    .tab-btn.active {
-        color: var(--text);
-        border-bottom-color: var(--accent);
-    }
-
-    .hidden {
-        display: none;
-    }
-
-    .history-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .history-item .muted {
-        color: var(--muted);
-        font-size: 0.8rem;
-    }
-
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      align-items: center;
-      margin-bottom: 1.25rem;
-    }
-
-    .filter-group {
-      display: flex;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-
-    .filter-group button {
-      background: transparent;
-      border: none;
-      color: var(--muted);
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      font-size: 0.875rem;
-    }
-
-    .filter-group button.active {
-      background: var(--accent);
-      color: white;
-    }
-
-    button.btn {
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-      cursor: pointer;
-    }
-
-    button.btn:hover { background: var(--accent-hover); }
-    button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    button.btn-secondary {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-
-    button.btn-secondary:hover { border-color: var(--accent); }
-
-    button.btn-sm {
-      padding: 0.3rem 0.65rem;
-      font-size: 0.8rem;
-    }
-
-    .stats {
-      display: flex;
-      gap: 1rem;
-      margin-left: auto;
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    th, td {
-      text-align: left;
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.875rem;
-    }
-
-    th {
-      background: #152030;
-      color: var(--muted);
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.04em;
-    }
-
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(0, 120, 212, 0.06); }
-
-    .badge {
-      display: inline-block;
-      padding: 0.15rem 0.55rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .badge.compliant { background: rgba(16, 124, 16, 0.2); color: #6ccb6c; }
-    .badge.non-compliant { background: rgba(209, 52, 56, 0.2); color: #f1707b; }
-
-    .loading, .empty {
-      text-align: center;
-      padding: 3rem 1rem;
-      color: var(--muted);
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 1.25rem;
-      height: 1.25rem;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      vertical-align: middle;
-      margin-right: 0.5rem;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    footer {
-      margin-top: 2rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--border);
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-
-    footer a { color: var(--accent); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Agency Asset Management API</h1>
-    <p>Live demo — track IT equipment audits and compliance status against a 90-day policy.</p>
-  </header>
-
-  <main>
-      <div id="statusBanner" class="banner warning">
-          <span class="spinner"></span>
-          Connecting to the API. The Azure SQL database may take 30–60 seconds to wake up on first request.
-      </div>
-
-      <div class="tabs">
-          <button type="button" class="tab-btn active" id="tabAssets">Assets</button>
-          <button type="button" class="tab-btn" id="tabHistory">Audit History</button>
-      </div>
-
-      <div id="assetsView">
-          <div class="toolbar">
-              <div class="filter-group">
-                  <button type="button" id="btnAll" class="active">All assets</button>
-                  <button type="button" id="btnNonAudited">Non-audited only</button>
-              </div>
-              <button type="button" id="btnRefresh" class="btn btn-secondary">Refresh</button>
-              <button type="button" id="btnReset" class="btn btn-secondary">Reset demo data</button>
-              <div class="stats">
-                  <span id="statTotal">— assets</span>
-                  <span id="statNonCompliant">— non-compliant</span>
-              </div>
-          </div>
-
-          <div id="tableContainer">
-              <div class="loading"><span class="spinner"></span>Loading assets…</div>
-          </div>
-      </div>
-
-      <div id="historyView" class="hidden">
-          <div class="toolbar">
-              <button type="button" id="btnRefreshHistory" class="btn btn-secondary">Refresh</button>
-          </div>
-          <div id="historyContainer">
-              <div class="loading"><span class="spinner"></span>Loading audit history…</div>
-          </div>
-      </div>
-
-      <footer>
-          <p>
-              Secured API endpoints require an <code>X-Api-Key</code> header.
-              This demo uses read/write routes at <code>/api/demo/*</code> for portfolio visitors.
-              <a href="https://github.com/maattox/AgencyAssetAPI" target="_blank" rel="noopener">View source on GitHub</a>
-          </p>
-      </footer>
-  </main>
-
-  <script>
-    const API = '/api/demo';
-    const MAX_DAYS = 90;
-    let filter = 'all';
-    let assets = [];
-
-    const statusBanner = document.getElementById('statusBanner');
-    const tableContainer = document.getElementById('tableContainer');
-    const statTotal = document.getElementById('statTotal');
-    const statNonCompliant = document.getElementById('statNonCompliant');
-
-    function setBanner(type, message, showSpinner = false) {
-      statusBanner.className = 'banner ' + type;
-      statusBanner.innerHTML = (showSpinner ? '<span class="spinner"></span>' : '') + message;
-    }
-
-    function formatDate(iso) {
-      if (!iso) return '—';
-      return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    }
-
-    function daysSince(iso) {
-      if (!iso) return 'Never audited';
-      const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-      return days + ' day' + (days === 1 ? '' : 's') + ' ago';
-    }
-
-    function renderTable() {
-      const rows = filter === 'non-audited' ? assets.filter(a => !a.isCompliant) : assets;
-
-      if (rows.length === 0) {
-        tableContainer.innerHTML = '<div class="empty">No assets match this filter.</div>';
-        return;
-      }
-
-      const html = `
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Serial</th>
-              <th>Asset</th>
-              <th>Department</th>
-              <th>Last audit</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(a => `
-              <tr data-id="${a.assetId}">
-                <td>${a.assetId}</td>
-                <td><code>${escapeHtml(a.serialNumber)}</code></td>
-                <td>${escapeHtml(a.assetName ?? '—')}</td>
-                <td>${escapeHtml(a.assignedDepartment ?? '—')}</td>
-                <td title="${formatDate(a.lastAuditDate)}">${daysSince(a.lastAuditDate)}</td>
-                <td>
-                  <span class="badge ${a.isCompliant ? 'compliant' : 'non-compliant'}">
-                    ${a.isCompliant ? 'Compliant' : 'Overdue'}
-                  </span>
-                </td>
-                <td>
-                  <button type="button" class="btn btn-sm btn-secondary audit-btn" data-id="${a.assetId}">
-                    Mark audited today
-                  </button>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>`;
-
-      tableContainer.innerHTML = html;
-
-      tableContainer.querySelectorAll('.audit-btn').forEach(btn => {
-        btn.addEventListener('click', () => markAudited(parseInt(btn.dataset.id, 10)));
-      });
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    function updateStats() {
-      statTotal.textContent = assets.length + ' asset' + (assets.length === 1 ? '' : 's');
-      const nonCompliant = assets.filter(a => !a.isCompliant).length;
-      statNonCompliant.textContent = nonCompliant + ' non-compliant';
-    }
-
-    function formatBytes(bytes) {
-      if (bytes == null) return '—';
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    }
-
-    async function loadHistory() {
-      const historyContainer = document.getElementById('historyContainer');
-      historyContainer.innerHTML = '<div class="loading"><span class="spinner"></span>Loading audit history…</div>';
-
-      try {
-        const res = await fetch('/api/automation/history');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const files = await res.json();
-
-        if (files.length === 0) {
-          historyContainer.innerHTML = '<div class="empty">No past audits found yet. Run the PowerShell automation script to generate an audit report.</div>';
-          return;
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agency Asset API — Live Demo</title>
+    <style>
+        :root {
+            --bg: #0f1419;
+            --surface: #1a2332;
+            --border: #2d3a4f;
+            --text: #e7ecf3;
+            --muted: #8b9cb3;
+            --accent: #0078d4;
+            --accent-hover: #106ebe;
+            --success: #107c10;
+            --danger: #d13438;
+            --warning: #ffb900;
         }
 
-        historyContainer.innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                <th>File</th>
-                <th>Created</th>
-                <th>Size</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${files.map(f => `
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Segoe UI", system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1.25rem 1.5rem;
+        }
+
+            header h1 {
+                font-size: 1.35rem;
+                font-weight: 600;
+            }
+
+            header p {
+                color: var(--muted);
+                font-size: 0.9rem;
+                margin-top: 0.35rem;
+            }
+
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .banner {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.9rem;
+        }
+
+            .banner.warning {
+                border-color: var(--warning);
+            }
+
+            .banner.error {
+                border-color: var(--danger);
+            }
+
+            .banner.success {
+                border-color: var(--success);
+            }
+
+            .banner.hidden {
+                display: none;
+            }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+            .tab-btn.active {
+                color: var(--text);
+                border-bottom-color: var(--accent);
+            }
+
+        .hidden {
+            display: none;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+            .history-item .muted {
+                color: var(--muted);
+                font-size: 0.8rem;
+            }
+
+        tr.history-row {
+            cursor: pointer;
+        }
+
+        .chevron {
+            display: inline-block;
+            width: 0.9em;
+            color: var(--muted);
+        }
+
+        a.btn {
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .btn-download {
+            background: #81e4b3;
+            color: #0d3d24;
+            font-weight: 600;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            border-radius: 8px;
+            padding: 0.5rem 1.1rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-download:hover {
+            background: #6bd9a1;
+        }
+
+        tr.detail-row td {
+            background: #101722;
+            padding: 1rem;
+        }
+
+        .detail-summary {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-bottom: 0.6rem;
+        }
+
+        .detail-table-wrap {
+            max-height: 320px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        table.csv-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+            table.csv-table th, table.csv-table td {
+                padding: 0.4rem 0.6rem;
+                border-bottom: 1px solid var(--border);
+                white-space: nowrap;
+            }
+
+            table.csv-table th {
+                background: #152030;
+                color: var(--muted);
+                position: sticky;
+                top: 0;
+            }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .filter-group {
+            display: flex;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+            .filter-group button {
+                background: transparent;
+                border: none;
+                color: var(--muted);
+                padding: 0.5rem 1rem;
+                cursor: pointer;
+                font-size: 0.875rem;
+            }
+
+                .filter-group button.active {
+                    background: var(--accent);
+                    color: white;
+                }
+
+        button.btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+
+            button.btn:hover {
+                background: var(--accent-hover);
+            }
+
+            button.btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+        button.btn-secondary {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+            button.btn-secondary:hover {
+                border-color: var(--accent);
+            }
+
+        button.btn-sm {
+            padding: 0.3rem 0.65rem;
+            font-size: 0.8rem;
+        }
+
+        .stats {
+            display: flex;
+            gap: 1rem;
+            margin-left: auto;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+        }
+
+        th {
+            background: #152030;
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.04em;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(0, 120, 212, 0.06);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+            .badge.compliant {
+                background: rgba(16, 124, 16, 0.2);
+                color: #6ccb6c;
+            }
+
+            .badge.non-compliant {
+                background: rgba(209, 52, 56, 0.2);
+                color: #f1707b;
+            }
+
+        .loading, .empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--muted);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+            footer a {
+                color: var(--accent);
+                text-decoration: none;
+            }
+
+                footer a:hover {
+                    text-decoration: underline;
+                }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Agency Asset Management API</h1>
+        <p>Live demo — track IT equipment audits and compliance status against a 90-day policy.</p>
+    </header>
+
+    <main>
+        <div id="statusBanner" class="banner warning">
+            <span class="spinner"></span>
+            Connecting to the API. The Azure SQL database may take 30–60 seconds to wake up on first request.
+        </div>
+
+        <div class="tabs">
+            <button type="button" class="tab-btn active" id="tabAssets">Assets</button>
+            <button type="button" class="tab-btn" id="tabHistory">Audit History</button>
+        </div>
+
+        <div id="assetsView">
+            <div class="toolbar">
+                <div class="filter-group">
+                    <button type="button" id="btnAll" class="active">All assets</button>
+                    <button type="button" id="btnNonAudited">Non-audited only</button>
+                </div>
+                <button type="button" id="btnRefresh" class="btn btn-secondary">Refresh</button>
+                <button type="button" id="btnReset" class="btn btn-secondary">Reset demo data</button>
+                <div class="stats">
+                    <span id="statTotal">— assets</span>
+                    <span id="statNonCompliant">— non-compliant</span>
+                </div>
+            </div>
+
+            <div id="tableContainer">
+                <div class="loading"><span class="spinner"></span>Loading assets…</div>
+            </div>
+        </div>
+
+        <div id="historyView" class="hidden">
+            <div class="toolbar">
+                <button type="button" id="btnRefreshHistory" class="btn btn-secondary">Refresh</button>
+            </div>
+            <div id="historyContainer">
+                <div class="loading"><span class="spinner"></span>Loading audit history…</div>
+            </div>
+        </div>
+
+        <footer>
+            <p>
+                Secured API endpoints require an <code>X-Api-Key</code> header.
+                This demo uses read/write routes at <code>/api/demo/*</code> for portfolio visitors.
+                <a href="https://github.com/maattox/AgencyAssetAPI" target="_blank" rel="noopener">View source on GitHub</a>
+            </p>
+        </footer>
+    </main>
+
+    <script>
+        const API = '/api/demo';
+        const MAX_DAYS = 90;
+        let filter = 'all';
+        let assets = [];
+
+        const statusBanner = document.getElementById('statusBanner');
+        const tableContainer = document.getElementById('tableContainer');
+        const statTotal = document.getElementById('statTotal');
+        const statNonCompliant = document.getElementById('statNonCompliant');
+
+        function setBanner(type, message, showSpinner = false) {
+            statusBanner.className = 'banner ' + type;
+            statusBanner.innerHTML = (showSpinner ? '<span class="spinner"></span>' : '') + message;
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '—';
+            return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function daysSince(iso) {
+            if (!iso) return 'Never audited';
+            const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+            return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+        }
+
+        function renderTable() {
+            const rows = filter === 'non-audited' ? assets.filter(a => !a.isCompliant) : assets;
+
+            if (rows.length === 0) {
+                tableContainer.innerHTML = '<div class="empty">No assets match this filter.</div>';
+                return;
+            }
+
+            const html = `
+            <table>
+              <thead>
                 <tr>
-                  <td><code>${escapeHtml(f.fileName)}</code></td>
-                  <td>${formatDate(f.createdOn)}</td>
-                  <td>${formatBytes(f.sizeInBytes)}</td>
+                  <th>ID</th>
+                  <th>Serial</th>
+                  <th>Asset</th>
+                  <th>Department</th>
+                  <th>Last audit</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>`;
-      } catch (err) {
-        historyContainer.innerHTML = '<div class="empty">Unable to load audit history: ' + err.message + '</div>';
-      }
-    }
+              </thead>
+              <tbody>
+                ${rows.map(a => `
+                  <tr data-id="${a.assetId}">
+                    <td>${a.assetId}</td>
+                    <td><code>${escapeHtml(a.serialNumber)}</code></td>
+                    <td>${escapeHtml(a.assetName ?? '—')}</td>
+                    <td>${escapeHtml(a.assignedDepartment ?? '—')}</td>
+                    <td title="${formatDate(a.lastAuditDate)}">${daysSince(a.lastAuditDate)}</td>
+                    <td>
+                      <span class="badge ${a.isCompliant ? 'compliant' : 'non-compliant'}">
+                        ${a.isCompliant ? 'Compliant' : 'Overdue'}
+                      </span>
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-secondary audit-btn" data-id="${a.assetId}">
+                        Mark audited today
+                      </button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>`;
 
-    document.getElementById('tabAssets').addEventListener('click', () => {
-      document.getElementById('tabAssets').classList.add('active');
-      document.getElementById('tabHistory').classList.remove('active');
-      document.getElementById('assetsView').classList.remove('hidden');
-      document.getElementById('historyView').classList.add('hidden');
-    });
+            tableContainer.innerHTML = html;
 
-    document.getElementById('tabHistory').addEventListener('click', () => {
-      document.getElementById('tabHistory').classList.add('active');
-      document.getElementById('tabAssets').classList.remove('active');
-      document.getElementById('historyView').classList.remove('hidden');
-      document.getElementById('assetsView').classList.add('hidden');
-      loadHistory();
-    });
+            tableContainer.querySelectorAll('.audit-btn').forEach(btn => {
+                btn.addEventListener('click', () => markAudited(parseInt(btn.dataset.id, 10)));
+            });
+        }
 
-    document.getElementById('btnRefreshHistory').addEventListener('click', loadHistory);
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
-    async function waitForHealth(maxAttempts = 30, intervalMs = 2000) {
-      for (let i = 0; i < maxAttempts; i++) {
-        try {
-          const res = await fetch('/health');
-          if (res.ok) {
-            const data = await res.json();
-            if (data.database === 'connected') return true;
-          }
-        } catch { /* retry */ }
-        await new Promise(r => setTimeout(r, intervalMs));
-      }
-      return false;
-    }
+        function updateStats() {
+            statTotal.textContent = assets.length + ' asset' + (assets.length === 1 ? '' : 's');
+            const nonCompliant = assets.filter(a => !a.isCompliant).length;
+            statNonCompliant.textContent = nonCompliant + ' non-compliant';
+        }
 
-    async function loadAssets() {
-      tableContainer.innerHTML = '<div class="loading"><span class="spinner"></span>Loading assets…</div>';
-      setBanner('warning', 'Loading asset data…', true);
+        function formatBytes(bytes) {
+            if (bytes == null) return '—';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
 
-      try {
-        const res = await fetch(`${API}?maxDays=${MAX_DAYS}`);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        assets = await res.json();
-        updateStats();
-        renderTable();
-        setBanner('success', 'Connected. Compliance threshold: ' + MAX_DAYS + ' days since last audit.');
-      } catch (err) {
-        setBanner('error', 'Failed to load assets: ' + err.message + '. Try Refresh — the database may still be waking up.');
-        tableContainer.innerHTML = '<div class="empty">Unable to load data.</div>';
-      }
-    }
+        let historyFiles = [];
+        let expandedFile = null;
+        const historyContentCache = {};
 
-    async function markAudited(id) {
-      const btn = tableContainer.querySelector(`.audit-btn[data-id="${id}"]`);
-      if (btn) btn.disabled = true;
+        // Minimal CSV parser (handles quoted fields with embedded commas/quotes)
+        function parseCsv(text) {
+            const lines = text.split(/\r?\n/).filter(l => l.length > 0);
+            if (lines.length === 0) return { headers: [], rows: [] };
 
-      try {
-        const res = await fetch(`${API}/${id}/audit`, { method: 'PUT' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? 'Update failed');
-        await loadAssets();
-      } catch (err) {
-        alert('Could not update audit date: ' + err.message);
-        if (btn) btn.disabled = false;
-      }
-    }
+            const parseLine = (line) => {
+                const result = [];
+                let cur = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const ch = line[i];
+                    if (inQuotes) {
+                        if (ch === '"') {
+                            if (line[i + 1] === '"') { cur += '"'; i++; }
+                            else inQuotes = false;
+                        } else cur += ch;
+                    } else if (ch === '"') {
+                        inQuotes = true;
+                    } else if (ch === ',') {
+                        result.push(cur);
+                        cur = '';
+                    } else {
+                        cur += ch;
+                    }
+                }
+                result.push(cur);
+                return result;
+            };
 
-    async function resetDemo() {
-      if (!confirm('Reset all demo data to the original seed values?')) return;
+            const headers = parseLine(lines[0]);
+            const rows = lines.slice(1).map(parseLine);
+            return { headers, rows };
+        }
 
-      setBanner('warning', 'Resetting demo data…', true);
-      try {
-        const res = await fetch(`${API}/reset`, { method: 'POST' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        await loadAssets();
-      } catch (err) {
-        setBanner('error', 'Reset failed: ' + err.message);
-      }
-    }
+        async function loadHistory() {
+            const historyContainer = document.getElementById('historyContainer');
+            historyContainer.innerHTML = '<div class="loading"><span class="spinner"></span>Loading audit history…</div>';
+            expandedFile = null;
 
-    document.getElementById('btnAll').addEventListener('click', () => {
-      filter = 'all';
-      document.getElementById('btnAll').classList.add('active');
-      document.getElementById('btnNonAudited').classList.remove('active');
-      renderTable();
-    });
+            try {
+                const res = await fetch('/api/automation/history');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                historyFiles = await res.json();
 
-    document.getElementById('btnNonAudited').addEventListener('click', () => {
-      filter = 'non-audited';
-      document.getElementById('btnNonAudited').classList.add('active');
-      document.getElementById('btnAll').classList.remove('active');
-      renderTable();
-    });
+                if (historyFiles.length === 0) {
+                    historyContainer.innerHTML = '<div class="empty">No past audits found yet. Run the PowerShell automation script to generate an audit report.</div>';
+                    return;
+                }
 
-    document.getElementById('btnRefresh').addEventListener('click', loadAssets);
-    document.getElementById('btnReset').addEventListener('click', resetDemo);
+                renderHistoryTable();
+            } catch (err) {
+                historyContainer.innerHTML = '<div class="empty">Unable to load audit history: ' + err.message + '</div>';
+            }
+        }
 
-    (async function init() {
-      setBanner('warning', 'Waiting for the API and database to become ready…', true);
-      const ready = await waitForHealth();
-      if (!ready) {
-        setBanner('warning', 'Database is still waking up. Loading anyway — click Refresh if this fails.', false);
-      }
-      await loadAssets();
-    })();
-  </script>
+        function renderHistoryTable() {
+            const historyContainer = document.getElementById('historyContainer');
+
+            historyContainer.innerHTML = `
+            <table>
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Created</th>
+                  <th>Size</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${historyFiles.map(f => `
+                  <tr class="history-row" data-file="${escapeHtml(f.fileName)}">
+                    <td><span class="chevron">${expandedFile === f.fileName ? '▾' : '▸'}</span> <code>${escapeHtml(f.fileName)}</code></td>
+                    <td>${formatDate(f.createdOn)}</td>
+                    <td>${formatBytes(f.sizeInBytes)}</td>
+                    <td>
+                      <a class="btn btn-download download-btn"
+                         href="/api/automation/history/${encodeURIComponent(f.fileName)}"
+                         download="${escapeHtml(f.fileName)}">Download</a>
+                    </td>
+                  </tr>
+                  ${expandedFile === f.fileName ? `
+                  <tr class="detail-row">
+                    <td colspan="4">${renderHistoryDetailHtml(f.fileName)}</td>
+                  </tr>` : ''}
+                `).join('')}
+              </tbody>
+            </table>`;
+
+            historyContainer.querySelectorAll('.history-row').forEach(row => {
+                row.addEventListener('click', (e) => {
+                    if (e.target.closest('.download-btn')) return; // let the download link behave normally
+                    const fileName = row.dataset.file;
+                    expandedFile = expandedFile === fileName ? null : fileName;
+                    renderHistoryTable();
+                    if (expandedFile) loadHistoryDetail(fileName);
+                });
+            });
+        }
+
+        function renderHistoryDetailHtml(fileName) {
+            const cached = historyContentCache[fileName];
+
+            if (!cached) {
+                return '<div class="loading"><span class="spinner"></span>Loading file contents…</div>';
+            }
+            if (cached.error) {
+                return '<div class="empty">Unable to load file: ' + escapeHtml(cached.error) + '</div>';
+            }
+
+            const { headers, rows } = cached;
+            const complianceIdx = headers.findIndex(h => h.toLowerCase() === 'iscompliant');
+            const nonCompliantCount = complianceIdx >= 0
+                ? rows.filter(r => /^(false|0)$/i.test((r[complianceIdx] ?? '').trim())).length
+                : null;
+
+            const summaryLine = `${rows.length} record${rows.length === 1 ? '' : 's'}` +
+                (nonCompliantCount !== null ? `, ${nonCompliantCount} non-compliant` : '');
+
+            return `
+            <div class="detail-summary">${escapeHtml(summaryLine)}</div>
+            <div class="detail-table-wrap">
+              <table class="csv-table">
+                <thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+                <tbody>
+                  ${rows.map(r => `<tr>${r.map(c => `<td>${escapeHtml(c)}</td>`).join('')}</tr>`).join('')}
+                </tbody>
+              </table>
+            </div>`;
+        }
+
+        async function loadHistoryDetail(fileName) {
+            if (historyContentCache[fileName]) {
+                renderHistoryTable();
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/automation/history/${encodeURIComponent(fileName)}`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const text = await res.text();
+                historyContentCache[fileName] = parseCsv(text);
+            } catch (err) {
+                historyContentCache[fileName] = { error: err.message };
+            }
+
+            if (expandedFile === fileName) renderHistoryTable();
+        }
+
+        document.getElementById('tabAssets').addEventListener('click', () => {
+            document.getElementById('tabAssets').classList.add('active');
+            document.getElementById('tabHistory').classList.remove('active');
+            document.getElementById('assetsView').classList.remove('hidden');
+            document.getElementById('historyView').classList.add('hidden');
+        });
+
+        document.getElementById('tabHistory').addEventListener('click', () => {
+            document.getElementById('tabHistory').classList.add('active');
+            document.getElementById('tabAssets').classList.remove('active');
+            document.getElementById('historyView').classList.remove('hidden');
+            document.getElementById('assetsView').classList.add('hidden');
+            loadHistory();
+        });
+
+        document.getElementById('btnRefreshHistory').addEventListener('click', loadHistory);
+
+        async function waitForHealth(maxAttempts = 30, intervalMs = 2000) {
+            for (let i = 0; i < maxAttempts; i++) {
+                try {
+                    const res = await fetch('/health');
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.database === 'connected') return true;
+                    }
+                } catch { /* retry */ }
+                await new Promise(r => setTimeout(r, intervalMs));
+            }
+            return false;
+        }
+
+        async function loadAssets() {
+            tableContainer.innerHTML = '<div class="loading"><span class="spinner"></span>Loading assets…</div>';
+            setBanner('warning', 'Loading asset data…', true);
+
+            try {
+                const res = await fetch(`${API}?maxDays=${MAX_DAYS}`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                assets = await res.json();
+                updateStats();
+                renderTable();
+                setBanner('success', 'Connected. Compliance threshold: ' + MAX_DAYS + ' days since last audit.');
+            } catch (err) {
+                setBanner('error', 'Failed to load assets: ' + err.message + '. Try Refresh — the database may still be waking up.');
+                tableContainer.innerHTML = '<div class="empty">Unable to load data.</div>';
+            }
+        }
+
+        async function markAudited(id) {
+            const btn = tableContainer.querySelector(`.audit-btn[data-id="${id}"]`);
+            if (btn) btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API}/${id}/audit`, { method: 'PUT' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error ?? 'Update failed');
+                await loadAssets();
+            } catch (err) {
+                alert('Could not update audit date: ' + err.message);
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        async function resetDemo() {
+            if (!confirm('Reset all demo data to the original seed values?')) return;
+
+            setBanner('warning', 'Resetting demo data…', true);
+            try {
+                const res = await fetch(`${API}/reset`, { method: 'POST' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await loadAssets();
+            } catch (err) {
+                setBanner('error', 'Reset failed: ' + err.message);
+            }
+        }
+
+        document.getElementById('btnAll').addEventListener('click', () => {
+            filter = 'all';
+            document.getElementById('btnAll').classList.add('active');
+            document.getElementById('btnNonAudited').classList.remove('active');
+            renderTable();
+        });
+
+        document.getElementById('btnNonAudited').addEventListener('click', () => {
+            filter = 'non-audited';
+            document.getElementById('btnNonAudited').classList.add('active');
+            document.getElementById('btnAll').classList.remove('active');
+            renderTable();
+        });
+
+        document.getElementById('btnRefresh').addEventListener('click', loadAssets);
+        document.getElementById('btnReset').addEventListener('click', resetDemo);
+
+        (async function init() {
+            setBanner('warning', 'Waiting for the API and database to become ready…', true);
+            const ready = await waitForHealth();
+            if (!ready) {
+                setBanner('warning', 'Database is still waking up. Loading anyway — click Refresh if this fails.', false);
+            }
+            await loadAssets();
+        })();
+    </script>
 </body>
 </html>

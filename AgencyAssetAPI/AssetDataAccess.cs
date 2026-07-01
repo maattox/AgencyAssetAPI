@@ -213,6 +213,27 @@ internal static class AssetDataAccess
     }
 
     /// <summary>
+    /// Downloads a single audit history file's contents from Blob Storage.
+    /// Returns null if the blob doesn't exist. Used for the demo page's expand/preview
+    /// and download functionality.
+    /// </summary>
+    internal static async Task<string?> GetAuditFileContentAsync(
+        string storageAccountName,
+        string fileName,
+        CancellationToken cancellationToken = default)
+    {
+        var containerUri = new Uri($"https://{storageAccountName}.blob.core.windows.net/audit-history");
+        var blobContainerClient = new BlobContainerClient(containerUri, _azureCredential.Value);
+        var blobClient = blobContainerClient.GetBlobClient(fileName);
+
+        if (!await blobClient.ExistsAsync(cancellationToken))
+            return null;
+
+        var download = await blobClient.DownloadContentAsync(cancellationToken);
+        return download.Value.Content.ToString();
+    }
+
+    /// <summary>
     /// Resets the Assets table to its original seed state (demo purposes).
     /// Calls the ResetAssetsTable stored procedure which truncates and re-seeds with 20 sample assets.
     /// </summary>
@@ -254,7 +275,9 @@ internal static class AssetDataAccess
         var ordLastAudit = reader.GetOrdinal("LastAuditDate");
 
         // Handle nullable LastAuditDate
-        var lastAuditDate = reader.IsDBNull(ordLastAudit) ? (DateTime?)null : reader.GetDateTime(ordLastAudit);
+        var lastAuditDate = reader.IsDBNull(ordLastAudit)
+            ? (DateTime?)null
+            : DateTime.SpecifyKind(reader.GetDateTime(ordLastAudit), DateTimeKind.Utc);
 
         return new Asset(
             AssetId: reader.GetInt32(ordAssetId),

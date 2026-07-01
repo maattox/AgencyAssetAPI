@@ -2,11 +2,11 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "appName": { "value": "myagencyasset" },
+    "appName": { "value": "my-agency-asset" },
     "location": { "value": "westus3" },
-    "webAppName": { "value": "myagencyasset-api" },
+    "webAppName": { "value": "my-agency-asset-api" },
     "storageAccountName": { "value": "myagencyassetstore" },
-    "keyVaultName": { "value": "myagencyasset-kv" },
+    "keyVaultName": { "value": "my-agency-asset-kv" },
     "sqlAdminLogin": { "value": "AgencyAdmin" },
     "sqlAdminPassword": { "value": "SuperSecretPass123!" },
     "apiKey": { "value": "your-super-secret-api-key-here" }
