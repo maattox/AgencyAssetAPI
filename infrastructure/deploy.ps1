@@ -98,11 +98,16 @@ Write-Host "Applying database schema, structures, identities, and core data seed
 
 # Execute setup.sql against the newly created database
 # Uses SQL Admin credentials (temporary; Managed Identity user is created in setup.sql)
-Invoke-Sqlcmd -ServerInstance $sqlServerFqdn `
-              -Database "AgencyAssetDB" `
-              -Username $sqlAdmin `
-              -Password $sqlPass `
-              -Query $sqlScriptText
+try {
+    Invoke-Sqlcmd -ServerInstance $sqlServerFqdn `
+                  -Database "AgencyAssetDB" `
+                  -Username $sqlAdmin `
+                  -Password $sqlPass `
+                  -Query $sqlScriptText -ErrorAction Stop
+} catch {
+    Write-Error "Failed to apply database setup script. Ensure the SQL admin credentials are correct, the server is reachable, and the deployment completed successfully. Error: $_"
+    exit 1
+}
 
 Write-Host "✅ Full environment setup complete" -ForegroundColor Green
 Write-Host "Live App Base Endpoint: $($deployment.properties.outputs.appServiceUrl.value)" -ForegroundColor Cyan

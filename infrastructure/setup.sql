@@ -135,3 +135,17 @@ PRINT 'Stored Procedure [dbo].[ResetAssetsTable] created.';
 -- =============================================
 -- Calls ResetAssetsTable to populate the database.
 EXEC dbo.ResetAssetsTable;
+
+-- =============================================
+-- Section E: Grant Execute Permissions to Managed Identity
+-- =============================================
+-- Ensure the Web App Managed Identity (created earlier as @WebAppName) has EXECUTE permission on the stored procedures
+IF OBJECT_ID('dbo.GetNonAuditedAssets', 'P') IS NOT NULL
+BEGIN
+	EXEC('GRANT EXECUTE ON OBJECT::dbo.GetNonAuditedAssets TO [' + @WebAppName + ']');
+END
+
+IF OBJECT_ID('dbo.ResetAssetsTable', 'P') IS NOT NULL
+BEGIN
+	EXEC('GRANT EXECUTE ON OBJECT::dbo.ResetAssetsTable TO [' + @WebAppName + ']');
+END

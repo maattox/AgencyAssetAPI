@@ -10,6 +10,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE PROCEDURE dbo.ResetAssetsTable
+WITH EXECUTE AS OWNER
 AS
 /*
 -- =============================================
@@ -53,22 +54,5 @@ BEGIN
         ('SN-PH-6018', 'Google Pixel 7a (Agency)', 'Security', DATEADD(DAY, -25, GETUTCDATE())),
         ('SN-NAS-9019', 'Synology DS1821+ NAS', 'IT', DATEADD(DAY, -300, GETUTCDATE())),
         ('SN-LP-1020', 'Acer Aspire 5', 'Operations', DATEADD(DAY, -5, GETUTCDATE()));
-
-    -- Verify the data
-    SELECT 
-        AssetId,
-        SerialNumber,
-        AssetName,
-        AssignedDepartment,
-        LastAuditDate,
-        DATEDIFF(DAY, LastAuditDate, GETUTCDATE()) AS DaysSinceLastAudit,
-        CASE
-            WHEN LastAuditDate < DATEADD(DAY, -90, GETUTCDATE())
-                OR LastAuditDate IS NULL
-            THEN CAST(0 AS BIT)
-            ELSE CAST(1 AS BIT)
-        END AS IsCompliant
-    FROM dbo.Assets
-    ORDER BY AssetId;
 END
 GO
