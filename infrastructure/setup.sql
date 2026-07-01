@@ -140,6 +140,7 @@ EXEC dbo.ResetAssetsTable;
 -- Section E: Grant Execute Permissions to Managed Identity
 -- =============================================
 -- Ensure the Web App Managed Identity (created earlier as @WebAppName) has EXECUTE permission on the stored procedures
+DECLARE @WebAppName sysname = '$(WebAppName)';
 IF OBJECT_ID('dbo.GetNonAuditedAssets', 'P') IS NOT NULL
 BEGIN
 	EXEC('GRANT EXECUTE ON OBJECT::dbo.GetNonAuditedAssets TO [' + @WebAppName + ']');

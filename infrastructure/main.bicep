@@ -45,6 +45,12 @@ param deployerObjectId string
 @secure()
 param apiKey string
 
+@description('Public IP address of the machine running deploy.ps1, temporarily allow-listed so setup.sql can run')
+param clientIpAddress string = ''
+
+@description('Azure AD user principal name (UPN) of the deployer, used for the SQL AAD admin assignment')
+param deployerLoginName string
+
 // Azure RBAC Role IDs (used for Managed Identity assignments)
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 
@@ -96,6 +102,21 @@ resource sqlServer 'Microsoft.Sql/servers@2024-11-01-preview' = {
   }
 }
 
+// Designates the deploying user as the SQL Server's Azure AD admin.
+// Required because only an Azure AD-authenticated connection can run
+// CREATE USER ... FROM EXTERNAL PROVIDER (setup.sql uses this to grant the
+// Web App's Managed Identity database access). SQL auth alone cannot do this.
+resource sqlAadAdmin 'Microsoft.Sql/servers/administrators@2024-11-01-preview' = {
+  parent: sqlServer
+  name: 'ActiveDirectory'
+  properties: {
+    administratorType: 'ActiveDirectory'
+    login: deployerLoginName
+    sid: deployerObjectId
+    tenantId: subscription().tenantId
+  }
+}
+
 // Firewall rule: Allow Azure services to connect (0.0.0.0/0 is Azure internal only)
 resource sqlFirewall 'Microsoft.Sql/servers/firewallRules@2024-11-01-preview' = {
   parent: sqlServer
@@ -103,6 +124,17 @@ resource sqlFirewall 'Microsoft.Sql/servers/firewallRules@2024-11-01-preview' = 
   properties: {
     startIpAddress: '0.0.0.0'
     endIpAddress: '0.0.0.0'
+  }
+}
+
+// Firewall rule: Allow the machine running deploy.ps1 to reach the server directly
+// so setup.sql can execute. Only created if an IP was actually detected/passed in.
+resource sqlFirewallClientIp 'Microsoft.Sql/servers/firewallRules@2024-11-01-preview' = if (!empty(clientIpAddress)) {
+  parent: sqlServer
+  name: 'AllowDeployerClientIP'
+  properties: {
+    startIpAddress: clientIpAddress
+    endIpAddress: clientIpAddress
   }
 }
 
