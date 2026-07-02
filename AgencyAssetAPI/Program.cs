@@ -49,8 +49,26 @@ app.UseStaticFiles();
 
 // Load critical configuration from appsettings and Key Vault references
 // These will fail fast if not configured, preventing runtime surprises
-var expectedApiKey = builder.Configuration.GetValue<string>("Authorization:ApiKey")
-    ?? throw new InvalidOperationException("API key not configured.");
+
+// This is the preferred way to load the API key from the Key Vault.
+//var expectedApiKey = builder.Configuration.GetValue<string>("Authorization:ApiKey")
+//    ?? throw new InvalidOperationException("API key is not configured, or the Key Vault is unavailable.");
+
+var apiKeySection = builder.Configuration.GetSection("Authorization:ApiKey");
+string? expectedApiKey = apiKeySection.Value;
+
+if (string.IsNullOrEmpty(expectedApiKey))
+{
+    // Fallback for demo when Key Vault is removed/suspended.
+    // This is not secure, but for the purposes of this demo, it allows the API
+    // to continue functioning without a Key Vault once my Azure subscription expires.
+    expectedApiKey = "api-key";
+
+    app.Logger.LogWarning(
+        "Authorization:ApiKey could not be loaded from configuration — Key Vault may be unreachable, " +
+        "removed, or the subscription may have expired. Falling back to an insecure hardcoded demo API key. " +
+        "This fallback should never be relied on outside of a demo environment.");
+}
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");

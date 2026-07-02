@@ -326,3 +326,20 @@ if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
         Write-Warning "Web app deployment failed: $_"
     }
 }
+
+# ========================================
+# Section 5: Manual Step Reminder — Azure SQL Free Offer
+# ========================================
+# The Azure SQL "Free database offer" cannot be applied via Bicep/ARM — it must be
+# enabled manually per-database in the Azure Portal after deployment.
+Write-Host ""
+Write-Host "=========================================================" -ForegroundColor Yellow
+Write-Host "  ACTION REQUIRED: Enable the Azure SQL Free Database Offer" -ForegroundColor Yellow
+Write-Host "=========================================================" -ForegroundColor Yellow
+Write-Host "This can't be set via Bicep and must be turned on manually:" -ForegroundColor Yellow
+Write-Host "  1. Go to the Azure Portal (portal.azure.com)" -ForegroundColor Yellow
+Write-Host "  2. Navigate to: Resource Groups > $ResourceGroupName > AgencyAssetDB" -ForegroundColor Yellow
+Write-Host "  3. Go to: Settings > Compute + storage" -ForegroundColor Yellow
+Write-Host "  4. Switch on 'Free database offer' and save" -ForegroundColor Yellow
+Write-Host "=========================================================" -ForegroundColor Yellow
+Write-Host ""

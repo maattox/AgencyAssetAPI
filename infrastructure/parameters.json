@@ -9,6 +9,6 @@
     "keyVaultName": { "value": "my-agency-asset-kv" },
     "sqlAdminLogin": { "value": "AgencyAdmin" },
     "sqlAdminPassword": { "value": "SuperSecretPass123!" },
-    "apiKey": { "value": "your-super-secret-api-key-here" }
+    "apiKey": { "value": "api-key" }
   }
 }
