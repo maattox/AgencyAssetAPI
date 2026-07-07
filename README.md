@@ -21,7 +21,6 @@ This project simulates an internal **Agency Asset Management System** used to tr
 
 ## Features
 
-- **CRUD operations** on assets (focused on read + audit updates)
 - **Compliance tracking** – automatically flags assets that haven't been audited in 90 days
 - **Stored Procedures** for optimized database queries
 - **Secure API** protected by API key authentication
@@ -34,14 +33,14 @@ This project simulates an internal **Agency Asset Management System** used to tr
 ## Tech Stack
 
 - **Backend**: .NET 10 Minimal API
-- **Database**: Azure SQL Database (Serverless)
+- **Database**: Azure SQL Database
 - **Storage**: Azure Blob Storage (audit history and reports)
 - **Secrets Management**: Azure Key Vault
 - **IaC**: Bicep
 - **Authentication**: 
   - Passwordless Managed Identity (database & storage)
   - API key validation middleware
-- **Deployment**: Azure App Service (Free tier F1)
+- **Deployment**: Azure App Service
 
 ## Architecture
 **Azure Resource Group**  
@@ -53,7 +52,7 @@ This project simulates an internal **Agency Asset Management System** used to tr
 
 ## Azure Resources Tier Note
 This project is designed to run on the **Free Tier** of Azure App Service and the **Serverless Tier** of Azure SQL Database. 
-All shared Azure resources can run within free tier limits, except Azure Key Vault which carries minor per-operation charges.
+All shared Azure resources can run within free tier limits with the exception of Azure Key Vault which carries minor per-operation charges.
 To ensure the project remains operational after the end of my Azure free trial, a fallback api key is included in the code, but this of course would not be used in a production environment.
 
 ## Live Demo
