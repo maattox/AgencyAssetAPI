@@ -2,7 +2,7 @@
 // Agency Asset Management API - Infrastructure as Code
 // ========================================
 // This Bicep template defines a complete Azure infrastructure for a .NET 10 REST API
-// demonstrating Managed Identity, serverless SQL, and secure secret management.
+// demonstrating Managed Identity, serverless SQL, and free-tier-friendly configuration.
 //
 // Deployment command:
 //   az deployment group create \
@@ -12,9 +12,13 @@
 //
 // Key design principles:
 //   - Passwordless authentication: Managed Identity for all Azure service connections
-//   - Zero credentials in code: API key stored in Key Vault, injected at runtime
+//   - No secrets in application source: API key in Key Vault (primary) + App Setting fallback
 //   - Cost-optimized: Free tier App Service, Serverless SQL (auto-pause), Storage Cool tier
 //   - HTTPS-only and TLS 1.2+ enforcement
+//
+// Note on secrets: Key Vault is preferred. Because Key Vault has no always-free tier,
+// Authorization__ApiKeyFallback is also set as a plain App Service setting so the API
+// can keep running if Key Vault becomes unavailable after a free trial ends.
 
 @description('The name prefix for all resources')
 param appName string = 'agency-asset'
@@ -41,7 +45,7 @@ param sqlAdminPassword string
 @description('The Object ID of the user deploying the template (for local script access)')
 param deployerObjectId string
 
-@description('The API key for the application')
+@description('The API key for the application (stored in Key Vault and as an App Service fallback setting)')
 @secure()
 param apiKey string
 
@@ -55,9 +59,9 @@ param deployerLoginName string
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 
 // =============================================
-// Azure Key Vault - Secrets Management
+// Azure Key Vault - Secrets Management (primary)
 // =============================================
-// Stores sensitive configuration (API key) and enables secret injection via RBAC.
+// Stores the API key and enables secret injection via RBAC + App Service Key Vault references.
 // - enableRbacAuthorization: Uses role-based access control instead of access policies
 // - enableSoftDelete: Prevents accidental deletion (90-day recovery window)
 // - The Web App retrieves the API key at runtime using Managed Identity
@@ -73,7 +77,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
   }
 }
 
-// Store the API key as a secret (retrieved by the Web App at runtime)
+// Store the API key as a secret (retrieved by the Web App via Key Vault reference)
 resource apiKeySecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01' = {
   parent: keyVault
   name: 'ApiKey'
@@ -184,7 +188,8 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2024-11-01' = {
 //
 // Configuration:
 //   - linuxFxVersion: .NET 10 runtime on Linux
-//   - Authorization__ApiKey: Injected from Key Vault at runtime (no hardcoded secrets)
+//   - Authorization__ApiKey: Key Vault reference (preferred)
+//   - Authorization__ApiKeyFallback: plain app setting if Key Vault is unavailable
 //   - DefaultConnection: Connection string WITHOUT credentials (Managed Identity token used instead)
 resource appService 'Microsoft.Web/sites@2024-11-01' = {
   name: webAppName
@@ -203,6 +208,11 @@ resource appService 'Microsoft.Web/sites@2024-11-01' = {
         { 
           name: 'Authorization__ApiKey' 
           value: '@Microsoft.KeyVault(SecretUri=${apiKeySecret.properties.secretUri})' 
+        }
+        {
+          // Free-tier fallback when Key Vault cannot be resolved (no always-free Key Vault tier).
+          name: 'Authorization__ApiKeyFallback'
+          value: apiKey
         }
         { 
           name: 'SpecialValues__MaxDaysSinceLastAudit' 
@@ -302,6 +312,21 @@ resource keyVaultSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-0
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
     principalId: appService.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// =============================================
+// RBAC: Grant Local Deployer Access to Key Vault
+// =============================================
+// Allows Run-AgencyAudit.ps1 to read the ApiKey secret via Azure CLI.
+resource deployerKeyVaultAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(keyVault.id, deployerObjectId, keyVaultSecretsUserRoleId)
+  scope: keyVault
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
+    principalId: deployerObjectId
+    principalType: 'User'
   }
 }
 
@@ -311,3 +336,6 @@ resource keyVaultSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-0
 output appServiceUrl string = 'https://${appService.properties.defaultHostName}'
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
 output webAppManagedIdentityName string = webAppName
+output webAppName string = webAppName
+output resourceGroupName string = resourceGroup().name
+output keyVaultName string = keyVault.name

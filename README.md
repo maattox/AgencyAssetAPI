@@ -25,7 +25,7 @@ This project simulates an internal **Agency Asset Management System** used to tr
 - **Stored Procedures** for optimized database queries
 - **Secure API** protected by API key authentication
 - **Audit history storage** – compliance reports archived to Azure Blob Storage
-- **Key management** – API keys and secrets managed via Azure Key Vault
+- **Key management** – API key stored in Azure Key Vault, with a free-tier App Service fallback
 - **Passwordless authentication** – Managed Identity for database and storage access
 - **Serverless-ready** Azure SQL configuration (auto-pause enabled)
 - **Infrastructure as Code** using Bicep
@@ -44,16 +44,26 @@ This project simulates an internal **Agency Asset Management System** used to tr
 
 ## Architecture
 **Azure Resource Group**  
-├── Azure Key Vault (secrets & API keys)  
+├── Azure Key Vault
 ├── Azure SQL Server + Database (Serverless General Purpose Tier)  
 ├── Azure Storage Account (Blob Storage for audit history)  
 ├── App Service Plan (F1 Free)  
 └── Web App (.NET 10 REST API)  
 
 ## Azure Resources Tier Note
-This project is designed to run on the **Free Tier** of Azure App Service and the **Serverless Tier** of Azure SQL Database. 
-All shared Azure resources can run within free tier limits with the exception of Azure Key Vault which carries minor per-operation charges.
-To ensure the project remains operational after the end of my Azure free trial, a fallback api key is included in the code, but this of course would not be used in a production environment.
+This project is designed to stay operable on Azure free / low-cost tiers after a free trial ends:
+
+- **App Service**: F1 Free tier
+- **Azure SQL Database**: Serverless (with the portal **Free database offer** enabled after deploy)
+- **Storage**: Standard LRS Cool tier (low cost for infrequent audit archives)
+- **Key Vault**: Preferred for the API key, but it has **no always-free tier**
+
+Because Key Vault may stop working when trial credits run out, the API resolves secrets in this order:
+
+1. **`Authorization__ApiKey`** — App Service Key Vault reference (preferred)
+2. **`Authorization__ApiKeyFallback`** — plain App Service application setting (free-tier continuity)
+
+Neither value is hardcoded in application source. A production system would typically rely on Key Vault alone.
 
 ## Live Demo
 
@@ -63,7 +73,7 @@ To ensure the project remains operational after the end of my Azure free trial, 
 
 ## Deploy Your Own Instance
 
-The deployment setup provisions your resources, wires up Managed Identity databases roles, creates tables, and seeds initial data.
+The deployment setup provisions your resources, wires up Managed Identity database roles, creates tables, and seeds initial data.
 
 ### Prerequisites
 1. An active Azure subscription.
@@ -71,10 +81,11 @@ The deployment setup provisions your resources, wires up Managed Identity databa
 
 ### Steps
 1. Clone this repository.
-2. Review and configure local settings inside `/infrastructure/parameters.json`.
-3. Open a PowerShell terminal inside the `/infrastructure/` folder and run the automated provisioning file:
+2. Edit `/infrastructure/parameters.json` and set your own values.
+3. Open a PowerShell terminal inside the `/infrastructure/` folder and run:
    ```powershell
    ./deploy.ps1
+   ```
 
 4. Enable the Azure SQL free database offer. This can't be set via Bicep/ARM and must be turned on manually after deployment:
    1. Go to the [Azure Portal](https://portal.azure.com).
@@ -83,6 +94,12 @@ The deployment setup provisions your resources, wires up Managed Identity databa
    4. Switch on **Free database offer** and save.
 
    `deploy.ps1` will also print a reminder for this step at the end of the run.
+
+### Rotating or updating the API key later
+You do **not** need to edit application source. Either redeploy with a new `apiKey` in `parameters.json`, or update **both**:
+
+- Key Vault secret `ApiKey`, and
+- Web App application setting `Authorization__ApiKeyFallback`
 
 ## Automation Scripts
 
@@ -94,6 +111,7 @@ Orchestrates the full one-time setup of Azure infrastructure and database state,
 
 - Deploys the Bicep template (`main.bicep`), retrying across regions if the free-tier App Service SKU isn't available in the initial target region.
 - Automatically detects the caller's public IP and Azure AD identity, and passes them into the deployment so the SQL Server firewall and Azure AD admin are configured correctly.
+- Stores the API key in Key Vault and configures `Authorization__ApiKey` (Key Vault reference) plus `Authorization__ApiKeyFallback` on the Web App.
 - Runs `setup.sql` against the newly created database using an Azure AD access token — creating the schema, stored procedures, seed data, and the Managed Identity database user the API relies on for passwordless access.
 - Persists key deployment outputs (API URL, Key Vault name, Storage account name) as local environment variables, which `Run-AgencyAudit.ps1` (below) uses to auto-discover its target environment.
 
@@ -106,7 +124,7 @@ cd infrastructure
 
 Simulates a scheduled compliance job: it calls the live API to find non-compliant assets, generates an audit report, performs a sample remediation, and archives the results.
 
-- Authenticates to Azure Key Vault via the caller's Azure CLI session to retrieve the API key.
+- Resolves the API key from (in order): Key Vault secret `ApiKey`, or `apiKey` in `infrastructure/parameters.json` if Key Vault is unavailable.
 - Calls `GET /api/assets/non-audited` to pull the current list of overdue assets.
 - Exports a timestamped CSV compliance report locally (`audit-log-<timestamp>.csv`).
 - As a demo of automated remediation, randomly selects one overdue asset and calls `PUT /api/assets/{id}/audit` to mark it audited.

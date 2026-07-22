@@ -8,7 +8,7 @@
     "storageAccountName": { "value": "myagencyassetstore" },
     "keyVaultName": { "value": "my-agency-asset-kv" },
     "sqlAdminLogin": { "value": "AgencyAdmin" },
-    "sqlAdminPassword": { "value": "SuperSecretPass123!" },
-    "apiKey": { "value": "api-key" }
+    "sqlAdminPassword": { "value": "StrongPass123!" },
+    "apiKey": { "value": "change-me-demo-api-key" }
   }
 }

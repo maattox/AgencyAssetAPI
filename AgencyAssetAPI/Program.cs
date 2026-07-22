@@ -47,27 +47,36 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-// Load critical configuration from appsettings and Key Vault references
-// These will fail fast if not configured, preventing runtime surprises
+// Load the expected API key from configuration.
+//
+// Resolution order:
+//   1. Authorization:ApiKey — preferred. In Azure this is normally a Key Vault
+//      reference (Authorization__ApiKey → @Microsoft.KeyVault(...)).
+//   2. Authorization:ApiKeyFallback — free-tier-friendly App Service app setting.
+//      Azure Key Vault has no always-free tier, so when my trial ends, the API will still work
+//      from this plain app setting.
+static bool IsUsableApiKey(string? value) =>
+    !string.IsNullOrWhiteSpace(value)
+    && !value.StartsWith("@Microsoft.KeyVault(", StringComparison.Ordinal);
 
-// This is the preferred way to load the API key from the Key Vault.
-//var expectedApiKey = builder.Configuration.GetValue<string>("Authorization:ApiKey")
-//    ?? throw new InvalidOperationException("API key is not configured, or the Key Vault is unavailable.");
-
-var apiKeySection = builder.Configuration.GetSection("Authorization:ApiKey");
-string? expectedApiKey = apiKeySection.Value;
-
-if (string.IsNullOrEmpty(expectedApiKey))
+var expectedApiKey = builder.Configuration.GetValue<string>("Authorization:ApiKey");
+if (!IsUsableApiKey(expectedApiKey))
 {
-    // Fallback for demo when Key Vault is removed/suspended.
-    // This is not secure, but for the purposes of this demo, it allows the API
-    // to continue functioning without a Key Vault once my Azure subscription expires.
-    expectedApiKey = "api-key";
+    expectedApiKey = builder.Configuration.GetValue<string>("Authorization:ApiKeyFallback");
+    if (IsUsableApiKey(expectedApiKey))
+    {
+        app.Logger.LogWarning(
+            "Authorization:ApiKey was unavailable (Key Vault reference missing or unresolved). " +
+            "Using Authorization:ApiKeyFallback from App Service application settings.");
+    }
+}
 
-    app.Logger.LogWarning(
-        "Authorization:ApiKey could not be loaded from configuration — Key Vault may be unreachable, " +
-        "removed, or the subscription may have expired. Falling back to an insecure hardcoded demo API key. " +
-        "This fallback should never be relied on outside of a demo environment.");
+if (!IsUsableApiKey(expectedApiKey))
+{
+    throw new InvalidOperationException(
+        "API key is not configured. Prefer Key Vault via Authorization__ApiKey, or set the " +
+        "App Service fallback Authorization__ApiKeyFallback (both are provisioned by main.bicep). " +
+        "For local development, set Authorization:ApiKey in appsettings.Development.json or user secrets.");
 }
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")

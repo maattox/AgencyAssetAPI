@@ -5,7 +5,7 @@
 # Purpose: Orchestrates compliance audits for the Agency Asset Management system.
 #
 # Workflow:
-#   1. Retrieves API credentials from Azure Key Vault (passwordless, no secrets in script)
+#   1. Retrieves the API key from Azure Key Vault (falls back to parameters.json if Key Vault is unavailable)
 #   2. Fetches non-compliant assets via the API (/api/assets/non-audited)
 #   3. Generates CSV audit report with compliance details
 #   4. Simulates remediation: randomly marks one overdue asset as audited
@@ -17,7 +17,7 @@
 #
 # Prerequisites:
 #   - Azure CLI installed and authenticated: az login
-#   - Key Vault access: need "Key Vault Secrets User" RBAC role
+#   - Key Vault Secrets User RBAC role (preferred path for the API key)
 #   - Storage Blob Data Contributor role for audit log upload
 
 # ========================================
@@ -36,6 +36,7 @@ $repoDefaults = @{
     webAppName = 'my-agency-asset-api'
     storageAccountName = 'myagencyassetstore'
     keyVaultName = 'my-agency-asset-kv'
+    apiKey = $null
 }
 
 if (Test-Path $repoParamsPath) {
@@ -44,6 +45,7 @@ if (Test-Path $repoParamsPath) {
         if ($paramsJson.parameters.webAppName.value) { $repoDefaults.webAppName = $paramsJson.parameters.webAppName.value }
         if ($paramsJson.parameters.storageAccountName.value) { $repoDefaults.storageAccountName = $paramsJson.parameters.storageAccountName.value }
         if ($paramsJson.parameters.keyVaultName.value) { $repoDefaults.keyVaultName = $paramsJson.parameters.keyVaultName.value }
+        if ($paramsJson.parameters.apiKey.value) { $repoDefaults.apiKey = $paramsJson.parameters.apiKey.value }
     } catch {
         Write-Warning "Could not parse infrastructure/parameters.json; using embedded defaults. Error: $_"
     }
@@ -149,24 +151,32 @@ if ([string]::IsNullOrWhiteSpace($KeyVaultName)) {
 }
 
 # ========================================
-# Section 1: Authenticate with Azure Key Vault
+# Section 1: Resolve API key (Key Vault first, then parameters.json)
 # ========================================
+# Preferred: Key Vault secret "ApiKey" (same path as before).
+# Fallback: apiKey from infrastructure/parameters.json when Key Vault is unavailable
+# (e.g. after a free trial ends). The Web App uses Authorization__ApiKeyFallback separately.
 
-Write-Host "Fetching secure credentials from Azure Key Vault..." -ForegroundColor Cyan
+Write-Host "Fetching API key from Azure Key Vault..." -ForegroundColor Cyan
 
-# Verify Azure CLI is available
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
     Write-Error "Azure CLI is required but not installed."
     exit 1
 }
 
-# Retrieve API Key from Key Vault using the user's current Azure login
+$ApiKey = $null
 try {
-    $ApiKey = az keyvault secret show --vault-name $KeyVaultName --name "ApiKey" --query "value" -o tsv
+    $ApiKey = az keyvault secret show --vault-name $KeyVaultName --name "ApiKey" --query "value" -o tsv 2>$null
     if ([string]::IsNullOrWhiteSpace($ApiKey)) { throw "Retrieved API Key is empty." }
+    Write-Host "Retrieved API key from Key Vault ($KeyVaultName)." -ForegroundColor Cyan
 } catch {
-    Write-Error "Failed to retrieve API Key from KeyVault ($KeyVaultName). Ensure you have run 'az login', have Key Vault Secrets User access, and that the Key Vault name matches your deployment (or set AGENCY_KV_NAME environment variable). If you just deployed via infrastructure/deploy.ps1, verify the deployment succeeded and that the Key Vault contains the 'ApiKey' secret. Error: $_"
-    exit 1
+    if (-not [string]::IsNullOrWhiteSpace($repoDefaults.apiKey)) {
+        $ApiKey = $repoDefaults.apiKey
+        Write-Warning "Key Vault unavailable ($KeyVaultName); using apiKey from parameters.json. Error: $_"
+    } else {
+        Write-Error "Failed to retrieve API Key from Key Vault ($KeyVaultName). Ensure you have run 'az login', have Key Vault Secrets User access, and that the Key Vault name matches your deployment (or set AGENCY_KV_NAME). Alternatively set apiKey in infrastructure/parameters.json. Error: $_"
+        exit 1
+    }
 }
 
 # Generate timestamp for audit log filename (useful for trending/archival)

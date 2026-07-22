@@ -8,7 +8,7 @@
 #   1. Validates and loads deployment parameters from parameters.json
 #   2. Creates or uses existing Azure Resource Group
 #   3. Retrieves current user's Azure AD object ID (for RBAC assignments)
-#   4. Deploys infrastructure via Bicep (Key Vault, SQL, App Service, Storage, RBAC roles)
+#   4. Deploys infrastructure via Bicep (Key Vault, SQL, App Service, Storage, RBAC; API key + app-setting fallback)
 #   5. Executes setup.sql to create database schema, stored procedures, Managed Identity user
 #   6. Seeds initial sample data via ResetAssetsTable procedure
 #   7. Sets environment variables for downstream scripts (automation/Run-AgencyAudit.ps1)
@@ -222,8 +222,8 @@ Write-Host "Live App Base Endpoint: $($deployment.properties.outputs.appServiceU
 Write-Host "Configuring local environment variables for automation scripts..." -ForegroundColor Yellow
 
 $appUrl = $deployment.properties.outputs.appServiceUrl.value
-$kvName = $params.parameters.keyVaultName.value
 $storageAccount = $params.parameters.storageAccountName.value
+$kvName = $params.parameters.keyVaultName.value
 
 # Temporarily set for current PowerShell session and persist to user environment
 $vars = @{ 
@@ -272,6 +272,9 @@ if ($setVars) {
 
     Write-Host "Environment variables for API, Key Vault, and Storage successfully configured" -ForegroundColor Green
 }
+
+Write-Host "API key note: Authorization__ApiKey is a Key Vault reference; Authorization__ApiKeyFallback is a plain app setting for free-tier continuity." -ForegroundColor Cyan
+Write-Host "To rotate later, update the Key Vault 'ApiKey' secret and the Authorization__ApiKeyFallback app setting (or redeploy with a new apiKey)." -ForegroundColor Cyan
 
 # ========================================
 # Section 4: Deploy Web App Content (simple initial publish)
