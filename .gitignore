@@ -484,4 +484,5 @@ $RECYCLE.BIN/
 # Other
 appsettings.Development.json
 .agents/
+.cursor/
 skills-lock.json

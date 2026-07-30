@@ -24,24 +24,22 @@ internal static class AssetDataAccess
         new(() => new DefaultAzureCredential());
 
     /// <summary>
-    /// Opens a passwordless SQL connection using Managed Identity token injection.
-    /// If the connection string contains UserID/Password, standard authentication is used.
-    /// Otherwise, a DefaultAzureCredential token is injected for Managed Identity access.
-    /// 
-    /// This enables:
-    /// - Zero credentials stored in appsettings
-    /// - Automatic token refresh via Azure SDK
-    /// - RBAC enforcement at the database level
+    /// Opens a SQL connection using one of:
+    /// - SQL authentication when User ID / Password are present
+    /// - Manual AccessToken injection via DefaultAzureCredential / Managed Identity when
+    ///   the string has neither SQL creds nor Authentication (production App Service style; preferred)
     /// </summary>
     private static async Task<SqlConnection> OpenConnectionAsync(string connectionString, CancellationToken cancellationToken)
     {
         var connection = new SqlConnection(connectionString);
         var builder = new SqlConnectionStringBuilder(connectionString);
 
-        // If no SQL User or Password is provided, use Azure Managed Identity token injection
-        if (string.IsNullOrEmpty(builder.UserID) && string.IsNullOrEmpty(builder.Password))
+        var usesSqlAuth = !string.IsNullOrEmpty(builder.UserID) || !string.IsNullOrEmpty(builder.Password);
+        var usesConnectionStringEntraAuth = builder.Authentication != SqlAuthenticationMethod.NotSpecified;
+
+        // Production / mode A: no SQL creds and no Authentication= → inject AccessToken
+        if (!usesSqlAuth && !usesConnectionStringEntraAuth)
         {
-            // Request a token scoped to Azure SQL Database
             var tokenRequestContext = new TokenRequestContext(["https://database.windows.net/.default"]);
             var accessToken = await _azureCredential.Value.GetTokenAsync(tokenRequestContext, cancellationToken);
             connection.AccessToken = accessToken.Token;
